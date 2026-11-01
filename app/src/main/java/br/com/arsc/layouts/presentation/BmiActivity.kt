@@ -1,4 +1,4 @@
-package br.com.arsc.layouts
+package br.com.arsc.layouts.presentation
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -28,33 +28,42 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import br.com.arsc.layouts.R
 import br.com.arsc.layouts.ui.theme.LayoutsTheme
-import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import br.com.arsc.layouts.util.formatWeight
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 
-class MainActivity2 : ComponentActivity() {
+class BmiActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val viewModel: Main2ViewModel = viewModel()
+            val viewModel: BmiViewModel = viewModel()
 
             LayoutsTheme {
                 Surface (modifier = Modifier.fillMaxSize())
                 {
-                    IMCScreen(viewModel = viewModel)
+                    BmiScreenRoute(viewModel = viewModel)
                 }
             }
         }
@@ -62,24 +71,42 @@ class MainActivity2 : ComponentActivity() {
 }
 
 @Composable
-fun IMCScreen(viewModel: Main2ViewModel) {
+fun BmiScreenRoute(viewModel: BmiViewModel){
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    BmiScreen(
+        uiState = uiState,
+        onWeightChange = viewModel::onWeightChange,
+        onHeightChange = viewModel::onHeightChange,
+        onCalculate = viewModel::calculate
+    )
+}
+
+@Composable
+fun BmiScreen(uiState: BmiUiState,
+              onWeightChange: (String) -> Unit,
+              onHeightChange: (String) -> Unit,
+              onCalculate: () -> Unit) {
+
     Box(
         modifier = Modifier.fillMaxSize()
     ){
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
                 .height(250.dp)
                 .background(colorResource(R.color.yellow))
         ) {
             Image(
                 painter = painterResource(R.drawable.balance),
                 contentDescription = "Icon Balance",
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier
+                    .padding(top = 16.dp)
                     .size(80.dp)
             )
             Text(
-                text = "Calculadora de IMC",
+                text = stringResource(R.string.bmi_calculator),
                 color = colorResource(R.color.white),
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
@@ -88,7 +115,8 @@ fun IMCScreen(viewModel: Main2ViewModel) {
         }
 
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
             Card(
@@ -108,7 +136,7 @@ fun IMCScreen(viewModel: Main2ViewModel) {
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Seus dados",
+                        text = stringResource(R.string.your_data),
                         modifier = Modifier.fillMaxWidth(),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
@@ -116,22 +144,46 @@ fun IMCScreen(viewModel: Main2ViewModel) {
                         textAlign = TextAlign.Center
                     )
 
+                    val weightText = formatWeight(uiState.weight)
+
+                    var weightFieldValue by remember {
+                        mutableStateOf(
+                            TextFieldValue(
+                                text = weightText,
+                                selection = TextRange(weightText.length)
+                            )
+                        )
+                    }
+
                     OutlinedTextField(
-                        value = viewModel.peso.collectAsState().value,
-                        onValueChange = {
-                            viewModel.onPesoChange(it)
+                        value = weightFieldValue,
+                        onValueChange = {input ->
+
+                            val digits = input.text
+                                .filter { it.isDigit() }
+                                .take(5)
+
+                            onWeightChange(digits)
+
+                            val formatted = formatWeight(digits)
+
+                            weightFieldValue = TextFieldValue(
+                                text = formatted,
+                                selection = TextRange(formatted.length)
+                            )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
                             .padding(
-                            top = 16.dp
-                        ),
+                                top = 16.dp
+                            ),
                         label = {
                             Text(
-                                text = "Peso em kg",
+                                text = stringResource(R.string.weight_in_kg),
                                 color = colorResource(R.color.yellow)
                             )
                         },
-                        placeholder = { Text(text = "65,00kg") },
+                        placeholder = { Text(text = stringResource(R.string.ex_weight)) },
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = colorResource(R.color.yellow),
                             focusedBorderColor = colorResource(R.color.yellow),
@@ -142,20 +194,41 @@ fun IMCScreen(viewModel: Main2ViewModel) {
                         ),
                     )
 
+                    var heightFieldValue by remember {
+                        mutableStateOf(
+                            TextFieldValue(
+                                text = uiState.height,
+                                selection = TextRange(uiState.height.length)
+                            )
+                        )
+                    }
                     OutlinedTextField(
-                        value = viewModel.altura.collectAsState().value,
-                        onValueChange = {viewModel.onAlturaChange(it)},
-                        modifier = Modifier.fillMaxWidth()
+                        value = heightFieldValue,
+                        onValueChange = {  input ->
+
+                            val digits = input.text
+                                .filter { it.isDigit() }
+                                .take(3)
+
+                            onHeightChange(digits)
+
+                            heightFieldValue = TextFieldValue(
+                                text = digits,
+                                selection = TextRange(digits.length)
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
                             .padding(
                                 top = 16.dp
                             ),
                         label = {
                             Text(
-                                text = "Altura em centimetros",
+                                text = stringResource(R.string.height_in_centimeters),
                                 color = colorResource(R.color.yellow)
                             )
                         },
-                        placeholder = { Text(text = "160cm") },
+                        placeholder = { Text(text = stringResource(R.string.ex_height)) },
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = colorResource(R.color.yellow),
                             focusedBorderColor = colorResource(R.color.yellow),
@@ -170,9 +243,7 @@ fun IMCScreen(viewModel: Main2ViewModel) {
 
                     Button (
                         onClick = {
-                            viewModel.calcularIMC()
-                            viewModel.calcularPesoIdeal()
-                            viewModel.getStatusImc()
+                            onCalculate()
                             keyboardController?.hide()
                         },
                         modifier = Modifier
@@ -184,7 +255,7 @@ fun IMCScreen(viewModel: Main2ViewModel) {
                         )
                     ) {
                         Text(
-                            text = "Calcular",
+                            text = stringResource(R.string.calculate),
                             fontSize = 18.sp,
                         )
                     }
@@ -221,7 +292,7 @@ fun IMCScreen(viewModel: Main2ViewModel) {
 
                     ) {
                         Text(
-                            text = "Resultado",
+                            text = stringResource(R.string.result),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = colorResource(R.color.white),
@@ -234,13 +305,13 @@ fun IMCScreen(viewModel: Main2ViewModel) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Seu IMC é ",
+                                text = stringResource(R.string.your_bmi_is),
                                 fontSize = 18.sp,
                                 color = colorResource(R.color.white),
                                 textAlign = TextAlign.Start
                             )
                             Text(
-                                text = viewModel.imc.collectAsState().value,
+                                text = uiState.bmi,
                                 fontSize = 36.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = colorResource(R.color.white),
@@ -249,7 +320,7 @@ fun IMCScreen(viewModel: Main2ViewModel) {
                         }
 
                         Text(
-                            text = viewModel.status.collectAsState().value,
+                            text = stringResource(uiState.status),
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold,
                             color = colorResource(R.color.white),
@@ -259,13 +330,13 @@ fun IMCScreen(viewModel: Main2ViewModel) {
 
                         Row(
                             modifier = Modifier
-                            .fillMaxWidth().
-                            padding(top = 16.dp),
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                             ) {
                             Text(
-                                text = viewModel.pesoIdeal.collectAsState().value,
+                                text = uiState.idealWeight,
                                 fontSize = 18.sp,
                                 color = colorResource(R.color.white),
                                 textAlign = TextAlign.Start
@@ -280,8 +351,21 @@ fun IMCScreen(viewModel: Main2ViewModel) {
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun IMCScreenPreview() {
+fun BmiScreenPreview() {
+    val previewState = BmiUiState(
+        weight = "75,00",
+        height = "175",
+        bmi = "24,5",
+        status = R.string.status,
+        idealWeight = "Seu peso de referência está entre 56,66kg e 76,26kg"
+    )
+
     LayoutsTheme {
-        IMCScreen(viewModel = viewModel())
+        BmiScreen(
+            uiState = previewState,
+            onWeightChange = {},
+            onHeightChange = {},
+            onCalculate = {}
+        )
     }
 }

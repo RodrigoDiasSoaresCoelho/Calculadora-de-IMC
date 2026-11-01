@@ -1,4 +1,20 @@
 <resources>
     <string name="app_name">Layouts</string>
     <string name="title_activity_main2">MainActivity2</string>
+    <string name="bmi_calculator">Calculadora de IMC</string>
+    <string name="weight_in_kg">Peso em kg</string>
+    <string name="your_data">Seus dados</string>
+    <string name="ex_weight">65,00kg</string>
+    <string name="height_in_centimeters">Altura em centimetros</string>
+    <string name="ex_height">160cm</string>
+    <string name="calculate">Calcular</string>
+    <string name="result">Resultado</string>
+    <string name="your_bmi_is">"Seu IMC é "</string>
+    <string name="status">"status"</string>
+    <string name="underweight">Underweight</string>
+    <string name="ideal_weight">Ideal weight</string>
+    <string name="overweight">Overweight</string>
+    <string name="obesity_class_i">Obesity Class I</string>
+    <string name="obesity_class_ii">Obesity Class II</string>
+    <string name="obesity_class_iii">Obesity Class III</string>
 </resources>
